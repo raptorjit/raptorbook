@@ -1,4 +1,4 @@
 # Observational view
 
-Hello **again**, leanpub!
+How do you profile a program?
 
