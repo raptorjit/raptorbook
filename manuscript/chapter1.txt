@@ -1,2 +1,15 @@
-# Chapter 1
-Hello, leanpub!
+# Introduction
+
+The purpose of this book is to teach you how to write Lua code that
+runs fast with RaptorJIT.
+
+To write fast code we need to understand how the compiler works.
+
+We will look at the compiler in three different ways:
+
+1. Descriptively: Which blocks of code are compiled as a unit? How do the pieces fit together? How are they optimized?
+2. Operationally: How does compilation happen? 
+3. Empirically: How do we review how a program actually ran? How do we evaluate whether it ran well? How do we make improvements?
+
+Once we know the answers to these questions we will be able to write code that is easy to optimize.
+
