@@ -1,4 +1,0 @@
-# Observational view
-
-How do you profile a program?
-

@@ -1,4 +1,0 @@
-# Descriptive view
-
-How does generated code look?
-

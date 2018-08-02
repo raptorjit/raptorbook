@@ -1,4 +1,0 @@
-# Operational view
-
-How is code generated?
-

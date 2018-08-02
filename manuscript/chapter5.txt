@@ -1,4 +1,0 @@
-# A top-down optimization workflow
-
-How do you optimize an application?
-
