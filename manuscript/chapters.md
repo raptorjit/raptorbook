@@ -1,64 +1,63 @@
 # Introduction
 
-## System programming with a simple dynamic language
-x
+## A simple dynamic language for system programming
 
 ## Lua, LuaJIT, RaptorJIT
-x
+
 
 # How the JIT compiler works
-x
 
 ## What gets compiled
-x
 
 ## What gets optimized
-x
 
 ## How compilation happens
-x
+
+
+
+# How the VM produces data for diagnostics
+
+## Tracing with auditlog
+
+## Profiling with VMProfile
+
+
+# How to inspect diagnostic data
+
+## Interactive inspection with *Studio*
+
+### Reviewing the audit log
+
+### Reviewing the profiler samples
+
+### Inspecting a trace
+
+#### JIT events
+
+#### Bytecode
+
+#### Intermediate code
+
+#### Machine code
+
+## Exporting data in other formats
+
+### Human readable text
+
+### Machine readable
+
 
 # How to optimize a program
-x
 
-## A profiler-driven workflow
-x
+## A top-down workflow
 
 ## External library calls
-x
 
 ## Interpreting bytecode
-x
 
 ## Garbage collection
-x
 
 ## Trace head verses loop
-x
 
 ## IR and machine code
-
-# How the tools work
-x
-
-## Instrumented runtime system
-x
-
-### Auditlog
-x
-
-### VMProfile
-x
-
-## *Studio* interactive UI
-x
-
-### Pharo and Nix
-x
-
-### Glamorous Inspector
-x
-
-### DWARF
-x
 
