@@ -1,24 +1,26 @@
 # Introduction
 
-## A simple dynamic language for system programming
+## A dynamic language for system programming
 
-## Lua, LuaJIT, RaptorJIT
+## Background: Lua, LuaJIT, RaptorJIT
 
 
 # How the JIT compiler works
 
-## What gets compiled
+## Traces: the basic unit of compilation
 
-## What gets optimized
+## How traces are compiled
 
-## How compilation happens
+## How traces are optimized
 
 
 # How to write efficient programs
 
-## Make types consistent
+## Stay "on trace"
 
-## Make control flow consistent
+### Make types consistent
+
+### Make control flow consistent
 
 ## Allocate objects appropriately
 
@@ -27,16 +29,11 @@
 ## Control memory layout with FFI
 
 
-# What diagnostic data the runtime system produces
+# How to profile a program
 
-## Tracing with auditlog
+## Getting Auditlog and VMProfile diagnostic data
 
-## Profiling with VMProfile
-
-
-# How to inspect diagnostic data
-
-## Interactive inspection with *Studio*
+## Exploring data interactively with *Studio*
 
 ### Reviewing the audit log
 
