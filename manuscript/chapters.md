@@ -14,8 +14,20 @@
 ## How compilation happens
 
 
+# How to write efficient programs
 
-# How the VM produces data for diagnostics
+## Make types consistent
+
+## Make control flow consistent
+
+## Allocate objects appropriately
+
+## Minimize "boxing" of 64-bit values
+
+## Control memory layout with FFI
+
+
+# What diagnostic data the runtime system produces
 
 ## Tracing with auditlog
 
