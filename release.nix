@@ -1,0 +1,3 @@
+{
+  raptorbook = import ./default.nix;
+}
