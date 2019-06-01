@@ -1,0 +1,63 @@
+#+TITLE: Optimizing RaptorJIT programs
+#+OPTIONS: toc:nil num:3 H:4 ^:nil pri:t html-style:nil html-postamble:nil
+#+HTML_HEAD_EXTRA: <link rel="stylesheet" type="text/css" href="org.css"/>
+
+#+BEGIN_abstract
+RaptorJIT.
+#+END_abstract
+
+#+TOC: headlines 3
+
+* Introduction
+
+This is a book about how to make Lua code competitive with C, C++, and Rust.
+
+** What is RaptorJIT?
+** RaptorJIT, LuaJIT, Lua
+
+* How the tracing JIT works
+** How the compiler operates
+*** Inner loops
+*** Lines
+**** Lines at the end of loops
+**** Lines from the middle of loops
+*** Trace aborts
+*** Function calls
+** Examples
+*** Nested loops
+
+* How to measure performance
+** Specific performance target
+** Fixed workload benchmark
+** Variable workload benchmark
+
+* How to profile programs
+** System profiling
+*** Lua VM vs. libraries vs. kernel
+*** CPU efficiency
+** Lua VM profiling
+*** The ideal program
+*** Interpreter time
+*** Garbage collector time
+*** Line vs. Loop time
+
+* Optimization patterns
+
+** Hazard anti-patterns
+*** Create closure
+*** C-API call
+*** Too many local variables
+
+** Code optimization patterns
+*** Biased branch
+*** Fully biased branch
+*** Hoisted test
+*** Split loop
+*** Sunk pointer [*]
+*** Eliminated branch
+
+** Data optimization patterns
+*** Freelist
+*** FFI object
+*** Reused C-type
+
