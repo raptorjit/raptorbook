@@ -11,9 +11,13 @@ runCommand "raptorjit-optimization-manual"
     cp ${./raptorjit-optimization.org} raptorjit-optimization.org
     emacs -Q --batch --eval "
       (progn
+        (message \"Loading ox-html\")
         (require 'ox-html)
+	(message \"Opening org file\")
         (with-current-buffer (find-file-noselect \"raptorjit-optimization.org\")
-          (org-html-export-to-html)))"
+	  (message \"Exporting HTML\")
+          (org-html-export-to-html)
+	  (message \"Done\")))"
     install -D raptorjit-optimization.html $out/raptorjit-optimization.html
     install ${css} $out/org.css
 
