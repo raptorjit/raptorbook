@@ -6,7 +6,7 @@
 RaptorJIT.
 #+END_abstract
 
-#+TOC: headlines 3
+#+TOC: headlines 2
 
 * Introduction
 
@@ -16,7 +16,48 @@ This is a book about how to make Lua code competitive with C, C++, and Rust.
 ** RaptorJIT, LuaJIT, Lua
 
 * How the tracing JIT works
-** How the compiler operates
+
+RaptorJIT just-in-time compiles a program by /tracing/ parts of its
+execution and then compiling the /trace/. Tracing means that the VM
+interprets a series of bytecodes and simultaneously records a detailed
+log of exactly what each bytecode did when executed. This log includes
+fine-grained details such as the concrete type of each temporary
+variable, which path was taken through each if-then-else construct,
+and exactly which function objects are called. The VM then compiles
+the log -- not the source code -- to create a /trace/ of machine code
+that is optimized for exactly these details.
+
+This process, called /tracing just-in-time compilation/, is inherently
+speculative. The intuition is that if you run the same piece of code
+many times in the same context then it will tend to execute in the
+same way: load the same of the same types, take the same conditional
+branches, call the same functions, and so on. The VM is making a
+gambit by tracing a single execution of a piece of code, compiling a
+trace of machine code that is /specialized/ on the exact details of
+this single execution, and then branching to this trace each time the
+same code runs in the future.
+
+This is a high-risk high-reward optimization strategy. If a piece of
+code continues to run in the same way that it did when it was traced
+then that will be very efficient -- typically competitive with C. If
+the code does not run the same way as when it was traced -- uses other
+types, takes different branches, calls different functions -- then
+that will be less efficient.
+
+If you understand how the tracing JIT compiler works then you can
+maximize your rewards while eliminating your risks. This is the key to
+writing applications which consistent high performance.
+
+** High-level descriptive view
+
+The JIT compiles a trace for:
+- Loops for each of the innermost loops in the program.
+- Lines connecting from the exit end of each loop to the start of the next loop.
+- Lines connecting from side-exits of traces to the start of the next loop.
+
+
+
+** Low-level operational view
 *** Inner loops
 *** Lines
 **** Lines at the end of loops
