@@ -22,6 +22,6 @@ runCommand "raptorjit-optimization-manual"
     install ${css} $out/org.css
 
     mkdir $out/nix-support
-    echo "file HTML raptorjit-optimization.html" >> $out/nix-support/hydra-build-products
+    echo "file HTML $out/raptorjit-optimization.html" >> $out/nix-support/hydra-build-products
   ''
 
