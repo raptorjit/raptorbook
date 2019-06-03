@@ -15,8 +15,27 @@ How to make Lua code competitive with C, C++, and Rust.
 
 This is a book about how to make Lua code competitive with C, C++, and Rust.
 
+
 ** What is RaptorJIT?
-** RaptorJIT, LuaJIT, Lua
+
+RaptorJIT is a dynamic system programming language.
+
+** Family tree: Lua, LuaJIT, RaptorJIT
+
+Lua is a tasteful dynamic language.
+
+LuaJIT is a faster alternative implementation for a dialect of Lua.
+
+RaptorJIT is a hard-fork of LuaJIT.
+
+** Why RaptorJIT?
+
+To keep LuaJIT alive and make it easier to use for system programming.
+
+** Why this book?
+
+Because application programmers need to know how to optimize programs
+for the JIT and not comprehensive documentation exists.
 
 * Tracing just-in-time compilation
 
@@ -25,22 +44,43 @@ to optimizing programs written in a dynamic language.
 
 Source code written in a dynamic language is hard to compile because
 many details have been deliberately left open. The only way to know
-what a program really does is to run it. This is exactly what a
+what a program really does is to run it. This is exactly what the
 tracing JIT compiler does.
 
 Specifically, the tracing JIT prepares to compile a piece of code by
-actually running it in an interpreter first and recording all of the
+first running it once in an interpreter and recording all of the
 details that became apparent at runtime: the type of each local
 variable, the definition of each called function and method, and even
 which conditional branches were taken and which were not. The result
 is a highly detailed log of how that piece of code runs -- or at least
 how it ran the one time that it was observed.
 
-The tracing JIT then makes a bold gambit: it optimizes the code very
-aggressively based on the prediction that the same code running in the
-same context will tend to execute in the same way in the future too.
+The tracing JIT then makes a gambit: it optimizes the code based on
+the prediction that the code will keep on running the same way in the
+future. This is a speculative optimization based on the intuition that
+a piece of code will tend to execute in the same way each time it is
+called in the same context. If the predictions usually come true at
+runtime then the code will run fast -- competitive with C.
 
-* How the JIT wants to compile your program
+The key to optimizing for the tracing JIT is to understand how it
+works and then play to its strengths while avoiding its weaknesses.
+
+** What is a trace?
+
+** How the JIT wants to compile your program
+
+(trace, guard, exit)
+
+Categories of trace:
+
+- Root trace :: Trace that starts on a bytecode instruction.
+- Loop trace :: Trace that exactly covers one innermost
+                loop. Typically a root trace, but can also be a side
+                trace that diverges at the beginning of a root trace.
+- Function trace :: Root trace that exactly covers one function and
+                    then returns to the interpreter.
+- Side trace :: Trace that starts from a specific point of divergence
+                (exit) from another trace.
 
 ** Loop traces
 
@@ -52,7 +92,8 @@ code thanks to /loop optimization/.
 Loop optimization compiles code to execute a series of iterations
 rather than just one. This is very powerful because it allows compiler
 optimizations to span across multiple iterations of a loop instead of
-optimizing each iteration separately without reference to the others.
+optimizing each iteration separately without reference to the
+others.
 
 Specifically,
 
@@ -63,12 +104,16 @@ Specifically,
 - Stores to Lua objects can be cached and updated between iterations
   of the loop, and then committed at the end.
 
-Loop optimization is also fragile because it only works when
-successive iterations of the loop follow exactly the same code path
-and "stay on trace." Each time an iteration strays from the path
-recorded for the loop trace it will cause the loop to start over:
-storing cached stores, reloading Lua objects, rechecking guards, and
-so on.
+These optimizations are so effective that loop optimized JIT code
+typically runs more than twice as fast as ordinary JIT code.
+
+The downside to loop optimization is that it is fragile: it only works
+when successive iterations of the loop follow exactly the same code
+path and "stay on trace." Each time a loop iteration strays from the
+execution path recorded for the loop trace -- exits onto a side trace
+-- the following iteration will need to re-enter the loop by flushing
+cached stores, reloading referenced Lua objects, rechecking guard
+conditions, and so on.
 
 *** Examples
 
@@ -144,7 +189,74 @@ that loop trace.
 
 ** Side traces
 
-Side traces are the second most important kind of trace. 
+A /side trace/ represents a code path that diverges from a previously
+compiled /parent trace/ at some specific point. The parent trace was
+specialized on certain specific conditions -- the types of variables,
+the outcomes of conditional branches, the definitions of function
+objects -- and when one of these conditions persistently fails to hold
+at runtime then a side trace is created to optimize an alternative
+execution path.
+
+Side traces are specialized on specific conditions too. Each side
+trace represents just one alternative path. If many different paths
+are persistently taken at runtime then new side traces are created to
+handle each one. The result is a /trace tree/ consisting of one /root
+trace/ and a collection of side traces, side-side traces,
+side-side-side traces, etc (referred to simply as "side traces.")
+
+Combinatorial explosion is limited in practice both because each side
+trace automatically finishes when it reaches the start of a root trace
+for it to connect with and because the JIT limits the number of side
+traces it will create before falling back to the interpreter to handle
+further cases.
+
+*** Example
+
+Here is an example of a loop that changes its behaviour over time in
+ways that require side traces.
+
+#+BEGIN_SRC lua -n -r -i
+function foo(x) end
+function bar(x) end
+local hook = foo
+
+local obj = 'a string'
+for i = 1, 1000000 do
+  if i >= 1000 then                     (ref:switched-bias)
+    hook(obj)
+  end
+  if i == 10000 then
+    hook = bar                          (ref:switched-hook)
+  end
+  if i == 100000 then
+    obj = {1,2,3,4,5}                   (ref:switched-type)
+  end
+end
+#+END_SRC
+
+The tracing JIT will start by compiling this into a loop trace
+specialized for the initial conditions where al of the ~if~ conditions
+evaluate to false and therefore none of the ~then~ clauses runs.
+
+Later, side traces will be compiled to handle divergences:
+
+1. On iteration 1000 onwards the first ~if~ condition will evaluate
+   true and the ~then~ clause will invoke the hook function. This
+   control flow divergence will lead to a new side trace.
+2. On iteration 10000 the definition of the ~hook~ function will
+   change. This function definition divergence will lead to a new side
+   trace.
+3. On iteration 100000 the type of ~obj~ will change from a string to
+   an array (table.) This will change the type of the variable ~x~ in
+   the hook function and this divergence will lead to a new side
+   trace. (Note: Because the compiler inlines all function calls we
+   always need to take into account the code inside each function that
+   is called in a trace.)
+
+Note that no side traces are required for running the ~then~ clauses
+of the second and third ~if~ statements. These execution paths are not
+persistent -- each occurs only once -- and so they are handled by the
+interpreter instead of being JIT compiled.
 
 ** Function traces
 
@@ -213,6 +325,14 @@ Reformulate code to avoid creating a closure in this code.
 
 *** C-API call
 *** Too many local variables
+
+*** Disruptive branch
+
+Poorly biased branch in a library routine disrupting the compilation of its caller.
+
+*** Disruptive loop
+
+Loop in a library routine preventing its caller from being an innermost loop.
 
 ** Code optimization patterns
 *** Biased branch
