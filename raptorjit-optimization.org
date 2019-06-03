@@ -84,8 +84,46 @@ The JIT compiles a trace for:
 
 * Optimization patterns
 
-** Hazard anti-patterns
-*** Create closure
+** Profile interpretation patterns
+*** Ideal profile
+
+All time spent in JIT loops.
+
+*** Healthy profile
+
+Time is spent in JIT loops or else deliberate FFI/GC.
+
+*** Disrupted compilation
+
+Time spent in ~->interp~ and/or ~->return~ traces.
+
+*** Mismatched branch bias
+
+Side-traces taking more time than their parents.
+
+*** Low loop factor
+
+Low % of time is spent in looping machine code compared with line code.
+
+** Specific hazard anti-patterns
+*** Closure creation (FNEW NYI)
+
+**** Context
+
+Trying to reduce Disrupted compilation.
+
+Time is attributed to a ~->interp~ trace that aborted due to `NYI: FNEW`.
+
+**** Problem
+
+Function closure is being created in performance sensitive code. This cannot be JITed.
+
+**** Solution
+
+Reformulate code to avoid creating a closure in this code.
+
+**** Related
+
 *** C-API call
 *** Too many local variables
 
