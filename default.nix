@@ -1,8 +1,8 @@
 with import <nixpkgs> {};
 
 let css = fetchurl {
-            url = "https://gongzhitaao.org/orgcss/org.css";
-            sha256 = "089ng30fskkv9j6aqakffcrmgibidg778jfdgjsfk6s1lg14yc49";
+            url = "https://raw.githubusercontent.com/gongzhitaao/orgcss/b1c9f8975dc2346b247910c861f0f4a193d63c68/docs/org.css";
+            sha256 = "08la1404s339nvcpnspz2pf29c3bnp5lsmvfs5gdqp7sfzag9n07";
           }; in
 
 runCommand "raptorjit-optimization-manual"
@@ -40,7 +40,4 @@ runCommand "raptorjit-optimization-manual"
     mkdir $out/nix-support
     echo "file HTML $out/raptorjit-optimization.html" >> $out/nix-support/hydra-build-products
   ''
-
-
-
 
