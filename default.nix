@@ -5,6 +5,12 @@ let
           url = "https://raw.githubusercontent.com/gongzhitaao/orgcss/b1c9f8975dc2346b247910c861f0f4a193d63c68/docs/org.css";
           sha256 = "08la1404s339nvcpnspz2pf29c3bnp5lsmvfs5gdqp7sfzag9n07";
         };
+
+  readtheorg = fetchurl {
+    url = https://fniessen.github.io/org-html-themes/setup/theme-readtheorg.setup;
+    sha256 = "0z9913j8lvyhll8kfx4l3f0if4816sqh265jscqjq76580lydisk";
+  };
+
   myEmacs = emacsWithPackages (epkgs: (with epkgs;
               [ use-package htmlize lua-mode org-ref ]));
 in
