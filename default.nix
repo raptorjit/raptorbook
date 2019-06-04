@@ -20,6 +20,7 @@ runCommand "raptorjit-optimization-manual"
   ''
     cp ${./raptorjit-optimization.org} raptorjit-optimization.org
     cp ${css} org.css
+    cp ${readtheorg} readtheorg.setup
     emacs -Q --batch --eval "
       (progn
 
@@ -39,7 +40,7 @@ runCommand "raptorjit-optimization-manual"
 				 \"/*]]>*/-->\n\"
 				 \"</style>\n\"))))
 
-	(add-hook 'org-export-before-processing-hook 'my-org-inline-css-hook)
+	;(add-hook 'org-export-before-processing-hook 'my-org-inline-css-hook)
 
         (require 'use-package)
         (package-initialize 'noactivate)

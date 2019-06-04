@@ -1,6 +1,7 @@
 #+TITLE: Optimizing RaptorJIT programs
 #+AUTHOR: Luke Gorrie
 #+EMAIL: luke@snabb.solutions
+#+SETUPFILE: readtheorg.setup
 #+LANGUAGE: en
 #+OPTIONS: toc:nil num:3 H:4 ^:nil pri:t html-style:nil
 #+HTML_HEAD_EXTRA: <link rel="stylesheet" type="text/css" href="org.css"/>
@@ -15,11 +16,40 @@ How to make Lua code competitive with C, C++, and Rust.
 
 This is a book about how to make Lua code competitive with C, C++, and Rust.
 
+Our trick will be to use a /tracing just-in-time compiler/ to
+transform high-level Lua code into efficient low-level machine
+code. Our Lua code will freely use high-level abstractions even inside
+inner loops -- tables, metatables, dynamically typed variables,
+first-class functions, and so on -- and the compiler will see right
+through these abstractions at runtime and make them disappear. The
+final result will be tight machine code that is well suited to modern
+CPUs and competitive with statically typed code from a traditional C
+compiler.
 
-** What is RaptorJIT?
+Sounds too good to be true, right?
 
-RaptorJIT is a dynamic system programming language.
+There is a catch: to write efficient code for a tracing JIT we will
+have to think different. If we write code with a traditional compiler
+in mind then it will not automatically take advantage of the JIT. That
+would be like writing SQL code to use with a NoSQL database, or local
+network code to use over a WAN, or SSD-optimized code to use on a hard
+disk. It will run, sure, but the performance will be surprising and
+often disappointing in practice.
 
+Instead we will have to learn how the tracing JIT works so that we can
+take advantage of its strengths while avoiding its weaknesses. This is
+not necessarily difficult -- the tracing JIT is actually simpler than
+a traditional compiler -- but it does require new skills.
+
+Specifically we will need to be able to:
+
+1. Write code in a style that the JIT can compile efficiently.
+2. Profile programs to identify which parts need to be improved.
+3. Optimize programs until we are satisfied with their profiles.
+
+The purpose of this book is to help you learn these three skills.
+
+** RaptorJIT: Our Lua VM
 ** Family tree: Lua, LuaJIT, RaptorJIT
 
 Lua is a tasteful dynamic language.
@@ -28,7 +58,10 @@ LuaJIT is a faster alternative implementation for a dialect of Lua.
 
 RaptorJIT is a hard-fork of LuaJIT.
 
-** Why RaptorJIT?
+** Objections
+*** Is tracing JIT a dead-end?
+*** Is LuaJIT dead?
+*** Is "competitive with C" just hyperbole?
 
 To keep LuaJIT alive and make it easier to use for system programming.
 
@@ -37,7 +70,7 @@ To keep LuaJIT alive and make it easier to use for system programming.
 Because application programmers need to know how to optimize programs
 for the JIT and not comprehensive documentation exists.
 
-* Tracing just-in-time compilation
+* Tracing JIT
 
 /Tracing just-in-time compilation/ is a high-risk high-reward approach
 to optimizing programs written in a dynamic language.
@@ -67,7 +100,12 @@ works and then play to its strengths while avoiding its weaknesses.
 
 ** What is a trace?
 
-** How the JIT wants to compile your program
+- Linear sequence of instructions.
+- Guards.
+- Statically typed values.
+- Lua function calls inlined.
+
+** How the JIT creates traces for a program
 
 (trace, guard, exit)
 
@@ -87,25 +125,23 @@ Categories of trace:
 Loop traces are the most important kind of trace. One loop trace is
 compiled for each of the innermost loops in the program source code,
 and these loops are compiled much more thoroughly than the rest of the
-code thanks to /loop optimization/.
+code -- typically *twice as fast* or faster -- thanks to /loop
+optimization/.
 
-Loop optimization compiles code to execute a series of iterations
-rather than just one. This is very powerful because it allows compiler
-optimizations to span across multiple iterations of a loop instead of
-optimizing each iteration separately without reference to the
-others.
+Loop optimization compiles code to execute a series of iterations in
+the same loop rather than just one. This is very powerful because it
+allows compiler optimizations to span across multiple loop iterations
+instead of having to optimize each iteration separately without
+reference to the others.
 
 Specifically,
 
 - Later iterations can reuse values that were loaded or calculated in
-  earlier iterations.
+  earlier iterations;
 - Guards tested in the first iteration do not have to be retested in
-  the following iterations.
+  the following iterations;
 - Stores to Lua objects can be cached and updated between iterations
   of the loop, and then committed at the end.
-
-These optimizations are so effective that loop optimized JIT code
-typically runs more than twice as fast as ordinary JIT code.
 
 The downside to loop optimization is that it is fragile: it only works
 when successive iterations of the loop follow exactly the same code
@@ -113,7 +149,9 @@ path and "stay on trace." Each time a loop iteration strays from the
 execution path recorded for the loop trace -- exits onto a side trace
 -- the following iteration will need to re-enter the loop by flushing
 cached stores, reloading referenced Lua objects, rechecking guard
-conditions, and so on.
+conditions, and so on. This means that the benefit of loop
+optimization is easily lost unless the innermost loops are written
+carefully.
 
 *** Examples
 
@@ -223,7 +261,7 @@ local hook = foo
 local obj = 'a string'
 for i = 1, 1000000 do
   if i >= 1000 then                     (ref:switched-bias)
-    hook(obj)
+    hook(obj)                           (ref:switched-call)
   end
   if i == 10000 then
     hook = bar                          (ref:switched-hook)
@@ -235,23 +273,23 @@ end
 #+END_SRC
 
 The tracing JIT will start by compiling this into a loop trace
-specialized for the initial conditions where al of the ~if~ conditions
-evaluate to false and therefore none of the ~then~ clauses runs.
+specialized for the initial conditions where all of the ~if~ conditions
+evaluate to false and therefore none of the ~then~ clauses run.
 
 Later, side traces will be compiled to handle divergences:
 
-1. On iteration 1000 onwards the first ~if~ condition will evaluate
+1. From iteration 1000 onwards the first ~if~ condition on line [[(switched-bias)]] will evaluate
    true and the ~then~ clause will invoke the hook function. This
    control flow divergence will lead to a new side trace.
-2. On iteration 10000 the definition of the ~hook~ function will
-   change. This function definition divergence will lead to a new side
-   trace.
-3. On iteration 100000 the type of ~obj~ will change from a string to
-   an array (table.) This will change the type of the variable ~x~ in
-   the hook function and this divergence will lead to a new side
-   trace. (Note: Because the compiler inlines all function calls we
-   always need to take into account the code inside each function that
-   is called in a trace.)
+2. From iteration 10000 the definition of the ~hook~ function will
+   change. This will cause line [[(switched-call)]] to call a
+   different function object and that will lead to a side trace.
+3. From iteration 100000 the type of ~obj~ will change from a string
+   to an array (table.) This will change the type of the value passed
+   to the hook function on line [[(switched-call)]] and therefore the type
+   of the parameter variable ~x~ in the hook function. (Note: Because
+   the compiler inlines all function calls we always need to take into
+   account the code inside each function that is called in a trace.)
 
 Note that no side traces are required for running the ~then~ clauses
 of the second and third ~if~ statements. These execution paths are not
@@ -266,12 +304,7 @@ Function traces are a fallback.
 *** Loop unrolling
 *** Instability unrolling
 
-* How to measure performance
-** Specific performance target
-** Fixed workload benchmark
-** Variable workload benchmark
-
-* How to profile programs
+* Profiling
 ** System profiling
 *** Lua VM vs. libraries vs. kernel
 *** CPU efficiency
@@ -281,7 +314,7 @@ Function traces are a fallback.
 *** Garbage collector time
 *** Line vs. Loop time
 
-* Optimization patterns
+* Optimization
 
 ** Profile interpretation patterns
 *** Ideal profile
